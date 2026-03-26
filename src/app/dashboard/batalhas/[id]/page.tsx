@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { batalhaBaseApi, batalhaEdicaoApi } from "@/lib/api";
-import { IBatalhaBase, IBatalhaEdicao, EditionStatus } from "@/types/batalha";
+import { IBatalhaBase, IBatalhaEdicao, EditionStatus, MatchStatus } from "@/types/batalha";
 
 const EDITION_STATUS: Record<EditionStatus, { label: string; color: string; bg: string }> = {
   DRAFT:     { label: "Rascunho",   color: "var(--muted-foreground)", bg: "rgba(160,160,160,0.1)" },
