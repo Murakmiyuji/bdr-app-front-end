@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { batalhaBaseApi } from "@/lib/api";
 import { IBatalhaBase } from "@/types/batalha";
+import { useAuth } from "@/hooks/useAuth";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -16,6 +17,7 @@ function formatDate(dateStr: string): string {
 
 export default function BatalhasPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [batalhas, setBatalhas] = useState<IBatalhaBase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function BatalhasPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createForm.name.trim() || !user) return;
+    if (!createForm.name.trim() || !user || !user.id) return;
 
     setIsCreating(true);
     try {
