@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { batalhaEdicaoApi, batalhaPartidaApi } from "@/lib/api";
-import { IBatalhaEdicao, IBatalhaPartida, MatchStatus } from "@/types/batalha";
+import { batalhaBaseApi, batalhaEdicaoApi } from "@/lib/api";
+import { IBatalhaBase, IBatalhaEdicao, EditionStatus } from "@/types/batalha";
 
-const EDITION_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+const EDITION_STATUS: Record<EditionStatus, { label: string; color: string; bg: string }> = {
   DRAFT:     { label: "Rascunho",   color: "var(--muted-foreground)", bg: "rgba(160,160,160,0.1)" },
   OPEN:      { label: "Aberta",     color: "var(--success)",          bg: "rgba(74,222,128,0.1)" },
   RUNNING:   { label: "Em Curso",   color: "#facc15",                 bg: "rgba(250,204,21,0.1)" },
@@ -32,8 +32,8 @@ function formatDate(dateStr: string | null): string {
 
 export default function BatalhaDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [edicao, setEdicao] = useState<IBatalhaEdicao | null>(null);
-  const [partidas, setPartidas] = useState<IBatalhaPartida[]>([]);
+  const [batalha, setBatalha] = useState<IBatalhaBase | null>(null);
+  const [edicoes, setEdicoes] = useState<IBatalhaEdicao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,17 +41,18 @@ export default function BatalhaDetailPage() {
     if (!id) return;
 
     Promise.all([
-      batalhaEdicaoApi.getById(id),
-      batalhaPartidaApi.getByEdition(id),
+      batalhaBaseApi.getById(id),
+      batalhaEdicaoApi.getByBase(id),
     ])
-      .then(([edicaoRes, partidasRes]) => {
-        const ed = edicaoRes.data;
-        setEdicao(ed?.batalhaEdicao ?? ed?.data ?? ed);
+      .then(([batalhaRes, edicoesRes]) => {
+        const bat = batalhaRes.data;
+        setBatalha(bat?.batalhaBase ?? bat?.data ?? bat);
 
-        const pData = partidasRes.data;
-        setPartidas(pData?.batalhasPartida ?? pData?.data ?? pData ?? []);
+        const eds = edicoesRes.data;
+        const list: IBatalhaEdicao[] = eds?.batalhasEdicao ?? eds?.data ?? eds ?? [];
+        setEdicoes(list);
       })
-      .catch(() => setError("Não foi possível carregar os detalhes da batalha."))
+      .catch(() => setError("Não foi possível carregar a batalha."))
       .finally(() => setIsLoading(false));
   }, [id]);
 
@@ -66,7 +67,7 @@ export default function BatalhaDetailPage() {
     );
   }
 
-  if (error || !edicao) {
+  if (error || !batalha) {
     return (
       <div className="max-w-2xl">
         <div
@@ -90,8 +91,6 @@ export default function BatalhaDetailPage() {
     );
   }
 
-  const statusInfo = EDITION_STATUS[edicao.status] ?? EDITION_STATUS.DRAFT;
-
   return (
     <div className="max-w-4xl">
       {/* Back */}
@@ -111,97 +110,95 @@ export default function BatalhaDetailPage() {
         className="rounded-2xl p-6 border mb-6"
         style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
       >
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span
-                className="text-xs font-semibold px-3 py-1 rounded-full"
-                style={{ background: statusInfo.bg, color: statusInfo.color }}
-              >
-                {statusInfo.label}
-              </span>
-              {edicao.season && (
-                <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                  Temporada {edicao.season}
-                </span>
-              )}
-            </div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-              {edicao.name}
-            </h1>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5">
-          <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
-              Início
-            </p>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
-              {formatDate(edicao.startsAt)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
-              Término
-            </p>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
-              {formatDate(edicao.endsAt)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
-              Partidas
-            </p>
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
-              {partidas.length}
-            </p>
-          </div>
-        </div>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+          {batalha.name}
+        </h1>
+        {batalha.description && (
+          <p className="text-sm mt-2" style={{ color: "var(--muted-foreground)" }}>
+            {batalha.description}
+          </p>
+        )}
+        <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
+          Criada em {formatDate(batalha.createdAt)}
+        </p>
       </div>
 
-      {/* Partidas */}
+      {/* Edições */}
       <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>
-        Partidas
+        Edições
       </h2>
 
-      {partidas.length === 0 ? (
+      {edicoes.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-            Nenhuma partida cadastrada para esta edição.
+            Nenhuma edição cadastrada para esta batalha.
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {partidas.map((partida) => {
-            const ms = MATCH_STATUS[partida.status] ?? MATCH_STATUS.PLANNED;
+        <div className="flex flex-col gap-3 mb-8">
+          {edicoes.map((edicao) => {
+            const status = EDITION_STATUS[edicao.status] ?? EDITION_STATUS.DRAFT;
             return (
-              <div
-                key={partida.id}
-                className="rounded-2xl p-5 border flex items-center justify-between gap-4"
+              <Link
+                key={edicao.id}
+                href={`/dashboard/batalhas/edicao/${edicao.id}`}
+                className="rounded-2xl p-5 border flex items-center justify-between gap-4 transition-colors hover:border-[var(--primary)]"
                 style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
               >
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>
-                    {partida.name ?? `Partida ${partida.id.slice(0, 6)}`}
-                  </p>
-                  {partida.scheduledAt && (
-                    <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
-                      {new Date(partida.scheduledAt).toLocaleString("pt-BR")}
+                <div className="flex items-center gap-4 min-w-0">
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-full shrink-0"
+                    style={{ background: status.bg, color: status.color }}
+                  >
+                    {status.label}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: "var(--foreground)" }}>
+                      {edicao.name}
+                    </p>
+                    {edicao.season && (
+                      <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                        Temporada {edicao.season}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  {edicao.startsAt && (
+                    <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                      {formatDate(edicao.startsAt)}
+                      {edicao.endsAt && ` → ${formatDate(edicao.endsAt)}`}
                     </p>
                   )}
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--muted-foreground)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="ml-auto mt-1"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </div>
-                <span
-                  className="text-xs font-semibold shrink-0"
-                  style={{ color: ms.color }}
-                >
-                  {ms.label}
-                </span>
-              </div>
+              </Link>
             );
           })}
         </div>
       )}
+
+      {/* Ranking */}
+      <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>
+        Ranking
+      </h2>
+      <div className="text-center py-12">
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+          Ranking ainda não implementado.
+        </p>
+      </div>
     </div>
   );
 }
