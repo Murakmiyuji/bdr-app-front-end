@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useState } from "react";
 
 const navItems = [
   {
@@ -52,24 +53,65 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleSidebar = () => setIsOpen(!isOpen);
+  const closeSidebar = () => setIsOpen(false);
 
   return (
-    <aside
-      className="flex flex-col w-60 min-h-screen shrink-0 border-r"
-      style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: "var(--card-border)" }}>
+    <>
+      {/* Botão hambúrguer para mobile */}
+      <button
+        onClick={toggleSidebar}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white shadow-md"
+        aria-label="Abrir menu"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
+      {/* Overlay para mobile */}
+      {isOpen && (
         <div
-          className="flex items-center justify-center w-9 h-9 rounded-xl select-none"
-          style={{ background: "var(--primary)" }}
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
+      <aside
+        className={`flex flex-col w-60 min-h-screen shrink-0 border-r fixed inset-y-0 left-0 z-50 transform transition-transform md:translate-x-0 md:static md:inset-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
+      >
+      {/* Logo */}
+      <div className="flex items-center justify-between px-5 py-5 border-b" style={{ borderColor: "var(--card-border)" }}>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center justify-center w-9 h-9 rounded-xl select-none"
+            style={{ background: "var(--primary)" }}
+          >
+            <span className="text-white font-black text-sm tracking-tighter">BDR</span>
+          </div>
+          <div>
+            <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>BDR APP</p>
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>Batalha de Rima</p>
+          </div>
+        </div>
+        {/* Botão fechar para mobile */}
+        <button
+          onClick={closeSidebar}
+          className="md:hidden p-1 rounded-md hover:bg-gray-200"
+          aria-label="Fechar menu"
         >
-          <span className="text-white font-black text-sm tracking-tighter">BDR</span>
-        </div>
-        <div>
-          <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>BDR APP</p>
-          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>Batalha de Rima</p>
-        </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
       </div>
 
       {/* Nav links */}
@@ -130,5 +172,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }
