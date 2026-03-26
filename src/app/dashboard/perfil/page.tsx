@@ -56,10 +56,10 @@ export default function PerfilPage() {
       </div>
 
       {/* Info */}
-      <div
-        className="rounded-2xl border divide-y"
-        style={{ background: "var(--card)", borderColor: "var(--card-border)", divideColor: "var(--card-border)" }}
-      >
+        <div
+          className="rounded-2xl border divide-y divide-[var(--card-border)]"
+          style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
+        >
         <div className="px-6 py-4">
           <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
             Nome
