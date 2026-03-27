@@ -117,6 +117,8 @@ export const authApi = {
     password: string;
     stageName?: string;
     city?: string;
+    state?: string;
+    country?: string;
   }) => api.post("/users/register", data),
 
   logout: () => api.post("/users/logout"),

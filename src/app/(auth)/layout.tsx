@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-md rounded-2xl p-8 shadow-xl border"
+      <div className="w-full max-w-lg rounded-2xl p-8 shadow-xl border"
         style={{
           background: "var(--card)",
           borderColor: "var(--card-border)",

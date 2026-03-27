@@ -53,7 +53,7 @@ export default function LoginPage() {
         Acesse sua conta para continuar
       </p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} className="forms-login flex flex-col gap-4" noValidate>
         {/* E-mail */}
         <div className="flex flex-col gap-1">
           <label htmlFor="email" className="text-sm font-medium"

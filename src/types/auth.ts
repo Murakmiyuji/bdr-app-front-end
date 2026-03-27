@@ -36,6 +36,8 @@ export interface RegisterParams {
   password: string;
   stageName?: string;
   city?: string;
+  state?: string;
+  country?: string;
 }
 
 // Resposta do cadastro
