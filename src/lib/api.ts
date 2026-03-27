@@ -140,7 +140,19 @@ export const authApi = {
 export const batalhaBaseApi = {
   getAll: () => api.get("/batalhas-base"),
   getById: (id: string) => api.get(`/batalhas-base/${id}`),
-  create: (data: { name: string; description?: string; organizerId: string }) =>
+  create: (data: {
+    name: string;
+    description?: string;
+    organizerId: string;
+    placeId: string;
+    placeName: string;
+    address: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  }) =>
     api.post("/batalhas-base", data),
   update: (id: string, data: { name?: string; description?: string }) =>
     api.put(`/batalhas-base/${id}`, data),

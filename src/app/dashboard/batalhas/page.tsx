@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { batalhaBaseApi } from "@/lib/api";
 import { IBatalhaBase } from "@/types/batalha";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  loadGoogleMapsPlaces,
+  mapGooglePlaceToBattlePlace,
+  SelectedBattlePlace,
+} from "@/lib/googleMaps";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -22,7 +27,16 @@ export default function BatalhasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", description: "" });
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    description: "",
+    locationLabel: "",
+  });
+  const [selectedPlace, setSelectedPlace] = useState<SelectedBattlePlace | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [mapsError, setMapsError] = useState<string | null>(null);
+  const locationInputRef = useRef<HTMLInputElement | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -37,9 +51,60 @@ export default function BatalhasPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!isCreateModalOpen || !locationInputRef.current) return;
+    let mounted = true;
+
+    loadGoogleMapsPlaces()
+      .then(() => {
+        if (!mounted || !locationInputRef.current || autocompleteRef.current) return;
+        const autocomplete = new window.google.maps.places.Autocomplete(
+          locationInputRef.current,
+          {
+            fields: [
+              "place_id",
+              "name",
+              "formatted_address",
+              "address_components",
+              "geometry",
+            ],
+          }
+        );
+
+        autocomplete.addListener("place_changed", () => {
+          const placeResult = autocomplete.getPlace();
+          const mapped = mapGooglePlaceToBattlePlace(placeResult);
+          if (!mapped) {
+            setSelectedPlace(null);
+            setLocationError("Selecione uma opção válida da lista do Google.");
+            return;
+          }
+          setSelectedPlace(mapped);
+          setCreateForm((prev) => ({ ...prev, locationLabel: mapped.address }));
+          setLocationError(null);
+        });
+
+        autocompleteRef.current = autocomplete;
+        setMapsError(null);
+      })
+      .catch(() => {
+        setMapsError(
+          "Não foi possível carregar o autocomplete do Google Maps. Verifique a chave de API."
+        );
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isCreateModalOpen]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.name.trim() || !user || !user.id) return;
+    if (!selectedPlace) {
+      setLocationError("Selecione a localização no autocomplete do Google.");
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -47,11 +112,21 @@ export default function BatalhasPage() {
         name: createForm.name,
         description: createForm.description || undefined,
         organizerId: user.id,
+        placeId: selectedPlace.placeId,
+        placeName: selectedPlace.placeName,
+        address: selectedPlace.address,
+        city: selectedPlace.city,
+        state: selectedPlace.state,
+        country: selectedPlace.country,
+        latitude: selectedPlace.latitude,
+        longitude: selectedPlace.longitude,
       });
-      const newBatalha = res.data;
+      const newBatalha = res.data?.batalhaBase ?? res.data?.data?.batalhaBase ?? res.data;
       setBatalhas(prev => [...prev, newBatalha]);
       setIsCreateModalOpen(false);
-      setCreateForm({ name: "", description: "" });
+      setCreateForm({ name: "", description: "", locationLabel: "" });
+      setSelectedPlace(null);
+      setLocationError(null);
       router.push(`/dashboard/batalhas/${newBatalha.id}`);
     } catch (err) {
       setError("Erro ao criar batalha.");
@@ -128,6 +203,11 @@ export default function BatalhasPage() {
                     {batalha.description}
                   </p>
                 )}
+                <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  {batalha.city && batalha.state
+                    ? `${batalha.city} - ${batalha.state}`
+                    : batalha.address}
+                </p>
               </div>
 
               <div className="text-right shrink-0">
@@ -197,10 +277,54 @@ export default function BatalhasPage() {
                   rows={3}
                 />
               </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
+                  Localização da Batalha
+                </label>
+                <input
+                  ref={locationInputRef}
+                  type="text"
+                  value={createForm.locationLabel}
+                  onChange={(e) => {
+                    setCreateForm((prev) => ({ ...prev, locationLabel: e.target.value }));
+                    setSelectedPlace(null);
+                    setLocationError(null);
+                  }}
+                  placeholder="Digite e selecione um local (Google Maps)"
+                  className="w-full px-3 py-2 rounded-xl border text-sm"
+                  style={{
+                    background: "var(--input-bg)",
+                    borderColor: locationError ? "var(--error)" : "var(--input-border)",
+                    color: "var(--foreground)"
+                  }}
+                  required
+                />
+                {mapsError && (
+                  <p className="text-xs mt-1" style={{ color: "var(--error)" }}>
+                    {mapsError}
+                  </p>
+                )}
+                {locationError && (
+                  <p className="text-xs mt-1" style={{ color: "var(--error)" }}>
+                    {locationError}
+                  </p>
+                )}
+                {!mapsError && (
+                  <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
+                    Escolha uma opção da lista para vincular o `placeId`.
+                  </p>
+                )}
+              </div>
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={() => {
+                    setIsCreateModalOpen(false);
+                    setCreateForm({ name: "", description: "", locationLabel: "" });
+                    setSelectedPlace(null);
+                    setLocationError(null);
+                    setMapsError(null);
+                  }}
                   className="flex-1 px-4 py-2 rounded-xl border text-sm font-medium transition-colors"
                   style={{ borderColor: "var(--card-border)", color: "var(--muted-foreground)" }}
                 >

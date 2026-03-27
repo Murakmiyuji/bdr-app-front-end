@@ -3,6 +3,14 @@
 export interface IBatalhaBase {
   id: string;
   name: string;
+  placeId: string;
+  placeName: string;
+  address: string;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   description: string | null;
   organizerId: string;
   createdAt: string;
@@ -11,6 +19,14 @@ export interface IBatalhaBase {
 
 export interface IBatalhaBaseCreateParams {
   name: string;
+  placeId: string;
+  placeName: string;
+  address: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
   organizerId: string;
 }

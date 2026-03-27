@@ -118,6 +118,9 @@ export default function BatalhaDetailPage() {
             {batalha.description}
           </p>
         )}
+        <p className="text-sm mt-2" style={{ color: "var(--muted-foreground)" }}>
+          Local: {batalha.address}
+        </p>
         <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
           Criada em {formatDate(batalha.createdAt)}
         </p>
