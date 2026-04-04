@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { batalhaBaseApi, batalhaEdicaoApi } from "@/lib/api";
-import { IBatalhaBase, IBatalhaEdicao, EditionStatus, MatchStatus } from "@/types/batalha";
+import { IBatalhaBase, IBatalhaEdicao, EditionStatus } from "@/types/batalha";
+import StatusBadge from "@/components/batalhas/StatusBadge";
 
 const EDITION_STATUS: Record<EditionStatus, { label: string; color: string; bg: string }> = {
   DRAFT:     { label: "Rascunho",   color: "var(--muted-foreground)", bg: "rgba(160,160,160,0.1)" },
@@ -14,11 +15,10 @@ const EDITION_STATUS: Record<EditionStatus, { label: string; color: string; bg: 
   CANCELLED: { label: "Cancelada",  color: "var(--error)",            bg: "rgba(248,113,113,0.1)" },
 };
 
-const MATCH_STATUS: Record<MatchStatus, { label: string; color: string }> = {
-  PLANNED:   { label: "Planejada",  color: "var(--muted-foreground)" },
-  LIVE:      { label: "Ao Vivo 🔴",  color: "var(--error)" },
-  FINISHED:  { label: "Finalizada", color: "var(--success)" },
-  CANCELLED: { label: "Cancelada",  color: "var(--muted-foreground)" },
+const CHAVEAMENTO_LABEL: Record<string, string> = {
+  SINGLE: "Simples",
+  DOUBLE: "Duplo",
+  TRIPLE: "Triplo",
 };
 
 function formatDate(dateStr: string | null): string {
@@ -32,10 +32,12 @@ function formatDate(dateStr: string | null): string {
 
 export default function BatalhaDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [batalha, setBatalha] = useState<IBatalhaBase | null>(null);
   const [edicoes, setEdicoes] = useState<IBatalhaEdicao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +57,20 @@ export default function BatalhaDetailPage() {
       .catch(() => setError("Não foi possível carregar a batalha."))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  const handleDelete = async () => {
+    if (!batalha) return;
+    if (!confirm(`Deseja realmente deletar a batalha "${batalha.name}"? Esta ação não pode ser desfeita.`)) return;
+
+    setIsDeleting(true);
+    try {
+      await batalhaBaseApi.delete(batalha.id);
+      router.push("/dashboard/batalhas");
+    } catch {
+      setError("Erro ao deletar a batalha. Tente novamente.");
+      setIsDeleting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -110,26 +126,113 @@ export default function BatalhaDetailPage() {
         className="rounded-2xl p-6 border mb-6"
         style={{ background: "var(--card)", borderColor: "var(--card-border)" }}
       >
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-          {batalha.name}
-        </h1>
-        {batalha.description && (
-          <p className="text-sm mt-2" style={{ color: "var(--muted-foreground)" }}>
-            {batalha.description}
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap mb-2">
+              <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                {batalha.name}
+              </h1>
+              {batalha.status && <StatusBadge status={batalha.status} size="md" />}
+            </div>
+
+            {batalha.description && (
+              <p className="text-sm mb-3" style={{ color: "var(--muted-foreground)" }}>
+                {batalha.description}
+              </p>
+            )}
+
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              📍 {batalha.city && batalha.state
+                ? `${batalha.city} — ${batalha.state}`
+                : batalha.address}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
+              Criada em {formatDate(batalha.createdAt)}
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 shrink-0">
+            <Link
+              href={`/dashboard/batalhas/criar?id=${batalha.id}`}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              style={{
+                background: "rgba(160,160,160,0.1)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              Editar
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              style={{
+                background: "rgba(248,113,113,0.1)",
+                color: "var(--error)",
+              }}
+            >
+              {isDeleting ? "Deletando..." : "Deletar"}
+            </button>
+          </div>
+        </div>
+
+        {/* Configuration grid */}
+        {(batalha.chaveamentoType || batalha.maxMcs != null || batalha.numJudges != null || batalha.roundsPerMc != null) && (
+          <div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t"
+            style={{ borderColor: "var(--card-border)" }}
+          >
+            {batalha.chaveamentoType && (
+              <div>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
+                  Chaveamento
+                </p>
+                <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                  {CHAVEAMENTO_LABEL[batalha.chaveamentoType]}
+                </p>
+              </div>
+            )}
+            {batalha.maxMcs != null && (
+              <div>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
+                  Máx. MCs
+                </p>
+                <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                  {batalha.maxMcs}
+                </p>
+              </div>
+            )}
+            {batalha.numJudges != null && (
+              <div>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
+                  Jurados
+                </p>
+                <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                  {batalha.numJudges}
+                </p>
+              </div>
+            )}
+            {batalha.roundsPerMc != null && (
+              <div>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>
+                  Rodadas/MC
+                </p>
+                <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                  {batalha.roundsPerMc}
+                </p>
+              </div>
+            )}
+          </div>
         )}
-        <p className="text-sm mt-2" style={{ color: "var(--muted-foreground)" }}>
-          Local: {batalha.address}
-        </p>
-        <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
-          Criada em {formatDate(batalha.createdAt)}
-        </p>
       </div>
 
       {/* Edições */}
-      <h2 className="text-lg font-bold mb-4" style={{ color: "var(--foreground)" }}>
-        Edições
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+          Edições
+        </h2>
+      </div>
 
       {edicoes.length === 0 ? (
         <div className="text-center py-12">

@@ -152,10 +152,25 @@ export const batalhaBaseApi = {
     country?: string;
     latitude?: number;
     longitude?: number;
+    status?: string;
+    chaveamentoType?: string;
+    maxMcs?: number;
+    numJudges?: number;
+    roundsPerMc?: number;
   }) =>
     api.post("/batalhas-base", data),
-  update: (id: string, data: { name?: string; description?: string }) =>
-    api.put(`/batalhas-base/${id}`, data),
+  update: (
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      status?: string;
+      chaveamentoType?: string;
+      maxMcs?: number;
+      numJudges?: number;
+      roundsPerMc?: number;
+    }
+  ) => api.put(`/batalhas-base/${id}`, data),
   delete: (id: string) => api.delete(`/batalhas-base/${id}`),
 };
 
