@@ -1,5 +1,8 @@
 // ── Batalha Base ──────────────────────────────────────────────────────────────
 
+export type BatalhaBaseStatus = "PLANNED" | "RUNNING" | "FINISHED";
+export type ChaveamentoType = "SINGLE" | "DOUBLE" | "TRIPLE";
+
 export interface IBatalhaBase {
   id: string;
   name: string;
@@ -13,6 +16,11 @@ export interface IBatalhaBase {
   longitude: number | null;
   description: string | null;
   organizerId: string;
+  status?: BatalhaBaseStatus;
+  chaveamentoType?: ChaveamentoType | null;
+  maxMcs?: number | null;
+  numJudges?: number | null;
+  roundsPerMc?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +37,11 @@ export interface IBatalhaBaseCreateParams {
   longitude?: number;
   description?: string;
   organizerId: string;
+  status?: BatalhaBaseStatus;
+  chaveamentoType?: ChaveamentoType;
+  maxMcs?: number;
+  numJudges?: number;
+  roundsPerMc?: number;
 }
 
 // ── Batalha Edição ────────────────────────────────────────────────────────────
