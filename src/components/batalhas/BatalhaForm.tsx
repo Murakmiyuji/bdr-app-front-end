@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useForm, Resolver } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { AxiosError } from "axios";
 import { batalhaBaseApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { IBatalhaBase, BatalhaBaseStatus, ChaveamentoType } from "@/types/batalha";
@@ -13,6 +14,12 @@ import {
   mapGooglePlaceToBattlePlace,
   SelectedBattlePlace,
 } from "@/lib/googleMaps";
+
+const optionalNumber = (min: number, max: number, minMsg: string, maxMsg: string) =>
+  z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
+    z.number({ message: "Deve ser um número válido" }).min(min, minMsg).max(max, maxMsg).optional()
+  );
 
 const batalhaSchema = z.object({
   name: z
@@ -25,30 +32,9 @@ const batalhaSchema = z.object({
     .optional(),
   status: z.enum(["PLANNED", "RUNNING", "FINISHED"] as const),
   chaveamentoType: z.enum(["SINGLE", "DOUBLE", "TRIPLE"] as const).optional(),
-  maxMcs: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
-    z
-      .number({ message: "Deve ser um número" })
-      .min(2, "Mínimo de 2 MCs")
-      .max(256, "Máximo de 256 MCs")
-      .optional()
-  ),
-  numJudges: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
-    z
-      .number({ message: "Deve ser um número" })
-      .min(1, "Mínimo de 1 jurado")
-      .max(20, "Máximo de 20 jurados")
-      .optional()
-  ),
-  roundsPerMc: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
-    z
-      .number({ message: "Deve ser um número" })
-      .min(1, "Mínimo de 1 rodada")
-      .max(10, "Máximo de 10 rodadas")
-      .optional()
-  ),
+  maxMcs: optionalNumber(2, 256, "Mínimo de 2 MCs", "Máximo de 256 MCs"),
+  numJudges: optionalNumber(1, 20, "Mínimo de 1 jurado", "Máximo de 20 jurados"),
+  roundsPerMc: optionalNumber(1, 10, "Mínimo de 1 rodada", "Máximo de 10 rodadas"),
 });
 
 type BatalhaFormValues = {
@@ -122,13 +108,13 @@ export default function BatalhaForm({ initialData, onSuccess }: BatalhaFormProps
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<BatalhaFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(batalhaSchema) as unknown as Resolver<BatalhaFormValues>,
+  } = useForm<BatalhaFormValues>({
+    resolver: zodResolver(batalhaSchema) as any,
     defaultValues: {
       name: initialData?.name ?? "",
       description: initialData?.description ?? "",
-      status: (initialData?.status ?? "PLANNED") as BatalhaBaseStatus,
+      status: initialData?.status ?? "PLANNED",
       chaveamentoType: initialData?.chaveamentoType ?? undefined,
       maxMcs: initialData?.maxMcs ?? undefined,
       numJudges: initialData?.numJudges ?? undefined,
@@ -175,7 +161,7 @@ export default function BatalhaForm({ initialData, onSuccess }: BatalhaFormProps
       })
       .catch(() => {
         setMapsError(
-          "Não foi possível carregar o Google Maps. Verifique a chave de API."
+          "Não foi possível carregar o Google Maps. Verifique sua conexão ou a configuração da API."
         );
       });
 
@@ -238,12 +224,18 @@ export default function BatalhaForm({ initialData, onSuccess }: BatalhaFormProps
       } else {
         router.push(`/dashboard/batalhas/${saved.id}`);
       }
-    } catch {
-      setSubmitError(
-        initialData
-          ? "Erro ao salvar batalha. Tente novamente."
-          : "Erro ao criar batalha. Tente novamente."
-      );
+    } catch (err) {
+      if (err instanceof AxiosError && err.response?.status === 422) {
+        setSubmitError("Dados inválidos. Verifique os campos e tente novamente.");
+      } else if (err instanceof AxiosError && err.response?.status === 403) {
+        setSubmitError("Sem permissão para realizar esta ação.");
+      } else {
+        setSubmitError(
+          initialData
+            ? "Erro ao salvar batalha. Verifique sua conexão e tente novamente."
+            : "Erro ao criar batalha. Verifique sua conexão e tente novamente."
+        );
+      }
     }
   };
 

@@ -26,7 +26,11 @@ export default function CriarBatalhaPage() {
         const bat = res.data;
         setInitialData(bat?.batalhaBase ?? bat?.data ?? bat);
       })
-      .catch(() => setLoadError("Não foi possível carregar os dados da batalha."))
+      .catch(() =>
+        setLoadError(
+          "Não foi possível carregar os dados da batalha. Verifique sua conexão ou se a batalha existe."
+        )
+      )
       .finally(() => setIsLoadingEdit(false));
   }, [editId]);
 

@@ -18,8 +18,12 @@ export function useBatalhas() {
       const list: IBatalhaBase[] =
         data?.batalhasBase ?? data?.data ?? data ?? [];
       setBatalhas(list);
-    } catch {
-      setError("Não foi possível carregar as batalhas.");
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Não foi possível carregar as batalhas. Verifique sua conexão e tente novamente.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }

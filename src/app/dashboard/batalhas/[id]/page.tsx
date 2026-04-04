@@ -54,20 +54,40 @@ export default function BatalhaDetailPage() {
         const list: IBatalhaEdicao[] = eds?.batalhasEdicao ?? eds?.data ?? eds ?? [];
         setEdicoes(list);
       })
-      .catch(() => setError("Não foi possível carregar a batalha."))
+      .catch(() =>
+        setError(
+          "Não foi possível carregar a batalha. Verifique sua conexão e tente novamente."
+        )
+      )
       .finally(() => setIsLoading(false));
   }, [id]);
 
   const handleDelete = async () => {
     if (!batalha) return;
-    if (!confirm(`Deseja realmente deletar a batalha "${batalha.name}"? Esta ação não pode ser desfeita.`)) return;
+    if (
+      !confirm(
+        `Deseja realmente deletar a batalha "${batalha.name}"? Esta ação não pode ser desfeita.`
+      )
+    )
+      return;
 
     setIsDeleting(true);
     try {
       await batalhaBaseApi.delete(batalha.id);
       router.push("/dashboard/batalhas");
-    } catch {
-      setError("Erro ao deletar a batalha. Tente novamente.");
+    } catch (err) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 409) {
+        setError(
+          "Não é possível deletar esta batalha pois ela possui edições vinculadas."
+        );
+      } else if (axiosErr?.response?.status === 403) {
+        setError("Sem permissão para deletar esta batalha.");
+      } else {
+        setError(
+          "Erro ao deletar a batalha. Verifique sua conexão e tente novamente."
+        );
+      }
       setIsDeleting(false);
     }
   };
